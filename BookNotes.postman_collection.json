@@ -1,0 +1,312 @@
+{
+  "info": {
+    "name": "Book Notes API",
+    "_postman_id": "book-notes-collection-v1",
+    "description": "Postman collection for the Book Notes capstone project. Tests all CRUD endpoints and the Open Library search proxy.\n\nMake sure your server is running on http://localhost:3020 before sending requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3020",
+      "type": "string",
+      "description": "Change this if you run the server on a different port."
+    }
+  ],
+  "item": [
+    {
+      "name": "📚 Pages (HTML)",
+      "item": [
+        {
+          "name": "GET Home — All Books (default sort)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Renders the home page with all books sorted by date_read (most recent first)."
+          }
+        },
+        {
+          "name": "GET Home — Sort by Rating",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/?sort=rating",
+              "host": ["{{baseUrl}}"],
+              "path": [""],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "rating",
+                  "description": "Sort books by rating descending"
+                }
+              ]
+            },
+            "description": "Returns books sorted by rating (highest first)."
+          }
+        },
+        {
+          "name": "GET Home — Sort by Title",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/?sort=title",
+              "host": ["{{baseUrl}}"],
+              "path": [""],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "title",
+                  "description": "Sort books alphabetically by title"
+                }
+              ]
+            },
+            "description": "Returns books sorted alphabetically by title."
+          }
+        },
+        {
+          "name": "GET Home — Sort by Recency",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/?sort=date_read",
+              "host": ["{{baseUrl}}"],
+              "path": [""],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "date_read",
+                  "description": "Sort books by most recently read"
+                }
+              ]
+            },
+            "description": "Returns books sorted by date_read descending."
+          }
+        },
+        {
+          "name": "GET Add Book Form",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["add"]
+            },
+            "description": "Renders the Add a Book form page."
+          }
+        },
+        {
+          "name": "GET Edit Book Form",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/edit/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["edit", "1"]
+            },
+            "description": "Renders the Edit form for book with id=1. Change the id to match an existing book in your database."
+          }
+        }
+      ]
+    },
+    {
+      "name": "✏️ CRUD — Books",
+      "item": [
+        {
+          "name": "POST Add Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title",           "value": "Atomic Habits",    "description": "Required — book title" },
+                { "key": "author",          "value": "James Clear",      "description": "Author name" },
+                { "key": "rating",          "value": "9",                "description": "1–10 rating" },
+                { "key": "date_read",       "value": "2024-03-15",       "description": "ISO date format YYYY-MM-DD" },
+                { "key": "open_library_id", "value": "OL36183573M",      "description": "Open Library edition ID for cover image" },
+                { "key": "notes",           "value": "Tiny habits compound into remarkable results. The 1% rule — small consistent changes beat sporadic big ones.", "description": "Personal reading notes" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["add"]
+            },
+            "description": "Creates a new book record in the database. On success, the server redirects to /. Postman will follow the redirect and show the home page HTML."
+          }
+        },
+        {
+          "name": "POST Add Book — Missing Title (Validation Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title",   "value": "",           "description": "Intentionally empty to test validation" },
+                { "key": "author",  "value": "Unknown",    "description": "" },
+                { "key": "rating",  "value": "5",          "description": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["add"]
+            },
+            "description": "Sends a POST with no title. Expect a 400 response with the form re-rendered showing an error message."
+          }
+        },
+        {
+          "name": "POST Update Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title",           "value": "Atomic Habits (Updated)",   "description": "Updated title" },
+                { "key": "author",          "value": "James Clear",               "description": "" },
+                { "key": "rating",          "value": "10",                         "description": "Updated rating" },
+                { "key": "date_read",       "value": "2024-04-01",                "description": "" },
+                { "key": "open_library_id", "value": "OL36183573M",               "description": "" },
+                { "key": "notes",           "value": "Updated: identity-based habits are the key insight.", "description": "Updated notes" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/edit/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["edit", "1"]
+            },
+            "description": "Updates the book with id=1. Change the id to a real book id in your database."
+          }
+        },
+        {
+          "name": "POST Delete Book",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/delete/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["delete", "1"]
+            },
+            "description": "Deletes the book with id=1. ⚠️ This is permanent. Change the id to a real book id in your database."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 API — Open Library Search",
+      "item": [
+        {
+          "name": "GET Search Books — Atomic Habits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/search?q=Atomic Habits",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Atomic Habits",
+                  "description": "Search query — book title or keywords"
+                }
+              ]
+            },
+            "description": "Queries the Open Library Search API and returns a JSON array of up to 8 matching books with title, author, Open Library ID, and cover URL."
+          }
+        },
+        {
+          "name": "GET Search Books — Deep Work",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/search?q=Deep Work",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Deep Work"
+                }
+              ]
+            },
+            "description": "Search for 'Deep Work' by Cal Newport."
+          }
+        },
+        {
+          "name": "GET Search Books — Missing Query (Error Test)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "search"]
+            },
+            "description": "Sends a search request with no `q` parameter. Expect a 400 JSON error response: { \"error\": \"Query parameter `q` is required.\" }"
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Error Handling",
+      "item": [
+        {
+          "name": "GET Unknown Route — 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/this-page-does-not-exist",
+              "host": ["{{baseUrl}}"],
+              "path": ["this-page-does-not-exist"]
+            },
+            "description": "Hits a route that doesn't exist. Expect a 404 response with the error.ejs page rendered."
+          }
+        },
+        {
+          "name": "GET Edit Non-existent Book — 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/edit/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["edit", "99999"]
+            },
+            "description": "Tries to edit a book id that doesn't exist. Expect a 404 rendered error page: 'Book not found.'"
+          }
+        }
+      ]
+    }
+  ]
+}

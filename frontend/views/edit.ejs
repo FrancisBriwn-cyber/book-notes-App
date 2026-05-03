@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit Book — My Book Notes</title>
+    <meta name="description" content="Update your notes and rating for a book in your reading journal." />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-wrapper">
+
+      <!-- ── Header ── -->
+      <header class="site-header">
+        <div class="header-brand">
+          <h1>📚 My Book Notes</h1>
+          <p>Books I've read · notes I've kept</p>
+        </div>
+        <a href="/" class="btn btn-secondary" id="back-home-btn">← Back</a>
+      </header>
+
+      <!-- ── Form ── -->
+      <div class="form-page">
+        <div class="form-card">
+
+          <div class="form-page-header">
+            <div>
+              <h2>Edit Book</h2>
+              <p>Update your notes or rating for this book</p>
+            </div>
+            <!-- Show current cover as a mini preview if OLID exists -->
+            <% if (book.open_library_id) { %>
+              <img
+                src="https://covers.openlibrary.org/b/olid/<%= book.open_library_id %>-S.jpg"
+                alt="<%= book.title %> cover"
+                style="width:48px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0"
+              />
+            <% } %>
+          </div>
+
+          <!-- Validation error (if any) -->
+          <% if (error) { %>
+            <div class="alert alert-error" id="form-error">
+              <span class="alert-icon">⚠️</span>
+              <%= error %>
+            </div>
+          <% } %>
+
+          <form action="/edit/<%= book.id %>" method="POST" id="edit-book-form" novalidate>
+
+            <div class="form-group">
+              <label for="title">Book Title <span style="color:var(--gold)">*</span></label>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                required
+                value="<%= book.title %>"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="author">Author</label>
+              <input type="text" id="author" name="author" value="<%= book.author || '' %>" />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rating">Rating (1–10)</label>
+                <input
+                  type="number"
+                  id="rating"
+                  name="rating"
+                  min="1"
+                  max="10"
+                  value="<%= book.rating || '' %>"
+                />
+              </div>
+              <div class="form-group">
+                <label for="date_read">Date Read</label>
+                <input
+                  type="date"
+                  id="date_read"
+                  name="date_read"
+                  value="<%= book.date_read ? new Date(book.date_read).toISOString().split('T')[0] : '' %>"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="open_library_id">Open Library Edition ID</label>
+              <input
+                type="text"
+                id="open_library_id"
+                name="open_library_id"
+                value="<%= book.open_library_id || '' %>"
+                placeholder="e.g. OL7353617M"
+              />
+              <p class="form-hint">
+                Find at <a href="https://openlibrary.org" target="_blank" rel="noopener">openlibrary.org</a>
+                — copy the ID from the book's URL.
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label for="notes">Your Notes</label>
+              <textarea id="notes" name="notes" rows="7"><%= book.notes || '' %></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="submit-edit-btn">✅ Update Book</button>
+              <a href="/" class="btn btn-secondary" id="cancel-edit-btn">Cancel</a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </body>
+</html>
