@@ -64,6 +64,16 @@
               <input type="text" id="author" name="author" value="<%= book.author || '' %>" />
             </div>
 
+            <div class="form-group">
+              <label for="category">Category</label>
+              <select id="category" name="category">
+                <option value="">Select a category</option>
+                <% categories.forEach((item) => { %>
+                  <option value="<%= item %>" <%= book.category === item ? 'selected' : '' %>><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label for="rating">Rating (1–10)</label>

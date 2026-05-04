@@ -13,10 +13,27 @@
       <!-- ── Header ── -->
       <header class="site-header">
         <div class="header-brand">
+          <p class="eyebrow">Reading Journal</p>
           <h1>📚 My Book Notes</h1>
           <p>Books I've read · notes I've kept</p>
         </div>
-        <a href="/add" class="btn btn-primary" id="add-book-btn">＋ Add Book</a>
+
+        <div class="header-actions">
+          <form action="/" method="GET" class="search-form">
+            <label for="search-q" class="sr-only">Search books</label>
+            <input
+              id="search-q"
+              name="q"
+              type="search"
+              value="<%= currentSearch ? currentSearch : '' %>"
+              placeholder="Search by title or author"
+              class="search-input"
+            />
+            <button type="submit" class="btn btn-secondary">Search</button>
+          </form>
+
+          <a href="/add" class="btn btn-primary" id="add-book-btn">＋ Add Book</a>
+        </div>
       </header>
 
       <!-- ── Toolbar: stats + sort ── -->
@@ -26,13 +43,17 @@
 
       <div class="sort-bar">
         <span>Sort by</span>
-        <a href="/?sort=date_read" id="sort-recency"
+        <a href="/?sort=date_read<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>" id="sort-recency"
            class="sort-btn <%= currentSort === 'date_read' ? 'active' : '' %>">🕐 Recency</a>
-        <a href="/?sort=rating"   id="sort-rating"
+        <a href="/?sort=rating<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"   id="sort-rating"
            class="sort-btn <%= currentSort === 'rating'    ? 'active' : '' %>">⭐ Rating</a>
-        <a href="/?sort=title"    id="sort-title"
+        <a href="/?sort=title<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"    id="sort-title"
            class="sort-btn <%= currentSort === 'title'     ? 'active' : '' %>">🔤 Title</a>
       </div>
+
+      <% if (currentSearch) { %>
+        <div class="search-summary">Showing results for “<strong><%= currentSearch %></strong>”</div>
+      <% } %>
 
       <!-- ── Book Grid ── -->
       <div class="book-grid">
@@ -51,67 +72,62 @@
         <% } else { %>
 
           <% books.forEach(book => { %>
+            <% const coverUrl = book.open_library_id ? `https://covers.openlibrary.org/b/olid/${book.open_library_id}-L.jpg` : null; %>
             <div class="book-card" id="book-<%= book.id %>">
+              <div class="book-card-main">
+                <div class="book-cover-wrap">
+                  <% if (coverUrl) { %>
+                    <img
+                      src="<%= coverUrl %>"
+                      alt="<%= book.title %> cover"
+                      class="book-cover"
+                      loading="lazy"
+                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+                    />
+                  <% } %>
 
-              <!-- Book cover (from Open Library Covers API) -->
-              <div class="book-cover-wrap">
-                <% if (book.open_library_id) { %>
-                  <img
-                    src="https://covers.openlibrary.org/b/olid/<%= book.open_library_id %>-M.jpg"
-                    alt="<%= book.title %> cover"
-                    class="book-cover"
-                    loading="lazy"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-                  />
-                  <!-- Fallback if image fails to load -->
-                  <div class="no-cover" style="display:none">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                    <span>No Cover</span>
+                  <div class="no-cover" style="<%= coverUrl ? 'display:none' : 'display:flex' %>">
+                    <span>Cover unavailable</span>
                   </div>
-                <% } else { %>
-                  <div class="no-cover">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                    <span>No Cover</span>
+                  <% if (book.rating) { %>
+                    <div class="rating-badge">⭐ <%= book.rating %></div>
+                  <% } %>
+                </div>
+
+                <div class="book-info">
+                  <div class="book-meta-row">
+                    <% if (book.date_read) { %>
+                      <span class="book-date"><%= new Date(book.date_read).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) %></span>
+                    <% } %>
+                    <% if (book.category) { %>
+                      <span class="book-category"><%= book.category %></span>
+                    <% } %>
+                    <% if (book.open_library_id) { %>
+                      <span class="book-badge">Open Library</span>
+                    <% } %>
                   </div>
-                <% } %>
 
-                <!-- Rating badge overlaid on the cover -->
-                <% if (book.rating) { %>
-                  <div class="rating-badge">⭐ <%= book.rating %><span style="opacity:0.6">/10</span></div>
-                <% } %>
-              </div>
+                  <h2 class="book-title"><%= book.title %></h2>
 
-              <!-- Book details -->
-              <div class="book-info">
-                <h2 class="book-title"><%= book.title %></h2>
-                <% if (book.author) { %>
-                  <p class="book-author">by <%= book.author %></p>
-                <% } %>
-                <% if (book.date_read) { %>
-                  <p class="book-date">
-                    Read: <%= new Date(book.date_read).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) %>
-                  </p>
-                <% } %>
-                <% if (book.notes) { %>
-                  <p class="book-notes"><%= book.notes %></p>
-                <% } %>
+                  <% if (book.author) { %>
+                    <p class="book-author"><%= book.author %></p>
+                  <% } %>
 
-                <!-- Action buttons -->
-                <div class="book-actions">
-                  <a href="/edit/<%= book.id %>" class="btn btn-secondary" id="edit-<%= book.id %>">✏️ Edit</a>
-                  <form action="/delete/<%= book.id %>" method="POST" style="display:inline"
-                        onsubmit="return confirm('Delete «<%= book.title %>»? This cannot be undone.')">
-                    <button type="submit" class="btn btn-danger" id="delete-<%= book.id %>">🗑 Delete</button>
-                  </form>
+                  <% if (book.notes) { %>
+                    <p class="book-notes"><%= book.notes %></p>
+                  <% } else { %>
+                    <p class="book-notes book-notes--ghost">No notes yet. Add a quick summary of what stood out.</p>
+                  <% } %>
+
+                  <div class="book-actions">
+                    <a href="/edit/<%= book.id %>" class="btn btn-secondary" id="edit-<%= book.id %>">Edit</a>
+                    <form action="/delete/<%= book.id %>" method="POST" style="display:inline"
+                          onsubmit="return confirm('Delete «<%= book.title %>»? This cannot be undone.')">
+                      <button type="submit" class="btn btn-danger" id="delete-<%= book.id %>">Delete</button>
+                    </form>
+                  </div>
                 </div>
               </div>
-
             </div>
           <% }) %>
 

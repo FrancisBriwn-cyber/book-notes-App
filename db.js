@@ -2,25 +2,21 @@ const { Pool } = require("pg");
 require("dotenv").config();
 
 /**
- * PostgreSQL connection pool using Supabase credentials
- * We use a connection pool for efficiency — it reuses existing connections
- * instead of creating a new one for every database request.
+ * PostgreSQL connection pool using the DATABASE_URL from .env
+ * Uses Supabase Session Pooler with SSL enabled
  */
 const pool = new Pool({
-  host: "aws-1-eu-north-1.pooler.supabase.com",
-  port: 5432,
-  database: "postgres",
-  user: "postgres.jwrhtesitguhwxiqdkcn",
-  password: "Booknotes2025GH",
+  connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // Required for Supabase pooler connections
+    rejectUnauthorized: false,
   },
 });
 
-// Test the connection on startup so we know immediately if the DB is reachable
+// Test the connection on startup
 pool.query("SELECT NOW()", (err, res) => {
   if (err) {
     console.error("❌ Database connection error:", err.message);
+    console.error("Ensure DATABASE_URL in .env is correct and the database is accessible.");
   } else {
     console.log("✅ Database connected successfully at:", res.rows[0].now);
   }

@@ -4,7 +4,7 @@ const pool = require("./db");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 3020;
+const PORT = process.env.PORT || 4000;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.urlencoded({ extended: true })); // Parse HTML form submissions
@@ -17,19 +17,63 @@ app.set("views", "./frontend/views");
 
 // ─── Allowed sort columns (whitelist to prevent SQL injection) ────────────────
 const VALID_SORTS = ["rating", "date_read", "title"];
+const BOOK_CATEGORIES = [
+  "Finance",
+  "Business",
+  "Lifestyle",
+  "Nature",
+  "Technology",
+  "Productivity",
+  "Self-help",
+  "History"
+];
+
+async function getCoverIdForBook(book) {
+  if (book.open_library_id) return book.open_library_id;
+  const searchTerm = [book.title, book.author].filter(Boolean).join(" ");
+  if (!searchTerm) return null;
+
+  try {
+    const response = await axios.get("https://openlibrary.org/search.json", {
+      params: { q: searchTerm, limit: 1, fields: "cover_edition_key" },
+    });
+    const doc = response.data.docs?.[0];
+    return doc?.cover_edition_key || null;
+  } catch (err) {
+    console.warn("Open Library lookup failed for book:", book.title, err.message);
+    return null;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  GET /  — Home page: list all books with optional sorting
 // ═══════════════════════════════════════════════════════════════════════════════
 app.get("/", async (req, res) => {
   const sortBy = req.query.sort || "date_read"; // Default: most recently read
+  const searchTerm = req.query.q ? req.query.q.trim() : "";
   const sortColumn = VALID_SORTS.includes(sortBy) ? sortBy : "date_read";
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM books ORDER BY ${sortColumn} DESC`
+    let queryText = "SELECT * FROM books";
+    const queryParams = [];
+
+    if (searchTerm) {
+      queryText += " WHERE title ILIKE $1 OR author ILIKE $1";
+      queryParams.push(`%${searchTerm}%`);
+    }
+
+    queryText += ` ORDER BY ${sortColumn} DESC`;
+
+    const result = await pool.query(queryText, queryParams);
+
+    const books = await Promise.all(
+      result.rows.map(async (book) => {
+        book.open_library_id = book.open_library_id || await getCoverIdForBook(book);
+        return book;
+      })
     );
-    res.render("index", { books: result.rows, currentSort: sortBy });
+
+    res.render("index", { books, currentSort: sortBy, currentSearch: searchTerm });
   } catch (err) {
     console.error("Error fetching books:", err.message);
     res.status(500).render("error", { message: "Could not load books. Please try again." });
@@ -40,24 +84,24 @@ app.get("/", async (req, res) => {
 //  GET /add  — Render the "Add a Book" form
 // ═══════════════════════════════════════════════════════════════════════════════
 app.get("/add", (req, res) => {
-  res.render("add", { error: null });
+  res.render("add", { error: null, categories: BOOK_CATEGORIES });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  POST /add  — Save a new book to the database
 // ═══════════════════════════════════════════════════════════════════════════════
 app.post("/add", async (req, res) => {
-  const { title, author, rating, notes, date_read, open_library_id } = req.body;
+  const { title, author, rating, notes, date_read, open_library_id, category } = req.body;
 
   // Validate required fields
   if (!title || title.trim() === "") {
-    return res.status(400).render("add", { error: "Book title is required." });
+    return res.status(400).render("add", { error: "Book title is required.", categories: BOOK_CATEGORIES });
   }
 
   try {
     await pool.query(
-      `INSERT INTO books (title, author, rating, notes, date_read, open_library_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO books (title, author, rating, notes, date_read, open_library_id, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         title.trim(),
         author ? author.trim() : null,
@@ -65,12 +109,13 @@ app.post("/add", async (req, res) => {
         notes ? notes.trim() : null,
         date_read || null,
         open_library_id ? open_library_id.trim() : null,
+        category ? category.trim() : null,
       ]
     );
     res.redirect("/");
   } catch (err) {
     console.error("Error adding book:", err.message);
-    res.status(500).render("add", { error: "Could not save book. Please try again." });
+    res.status(500).render("add", { error: "Could not save book. Please try again.", categories: BOOK_CATEGORIES });
   }
 });
 
@@ -87,7 +132,11 @@ app.get("/edit/:id", async (req, res) => {
       return res.status(404).render("error", { message: "Book not found." });
     }
 
-    res.render("edit", { book: result.rows[0], error: null });
+    res.render("edit", {
+      book: result.rows[0],
+      error: null,
+      categories: BOOK_CATEGORIES,
+    });
   } catch (err) {
     console.error("Error fetching book for edit:", err.message);
     res.status(500).render("error", { message: "Could not load book." });
@@ -99,7 +148,7 @@ app.get("/edit/:id", async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 app.post("/edit/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, author, rating, notes, date_read, open_library_id } = req.body;
+  const { title, author, rating, notes, date_read, open_library_id, category } = req.body;
 
   if (!title || title.trim() === "") {
     // Fetch the book again so the form can re-render with existing data
@@ -107,14 +156,15 @@ app.post("/edit/:id", async (req, res) => {
     return res.status(400).render("edit", {
       book: result.rows[0],
       error: "Book title is required.",
+      categories: BOOK_CATEGORIES,
     });
   }
 
   try {
     await pool.query(
       `UPDATE books
-       SET title=$1, author=$2, rating=$3, notes=$4, date_read=$5, open_library_id=$6
-       WHERE id=$7`,
+       SET title=$1, author=$2, rating=$3, notes=$4, date_read=$5, open_library_id=$6, category=$7
+       WHERE id=$8`,
       [
         title.trim(),
         author ? author.trim() : null,
@@ -122,6 +172,7 @@ app.post("/edit/:id", async (req, res) => {
         notes ? notes.trim() : null,
         date_read || null,
         open_library_id ? open_library_id.trim() : null,
+        category ? category.trim() : null,
         id,
       ]
     );
@@ -196,7 +247,22 @@ app.use((req, res) => {
   res.status(404).render("error", { message: "Page not found." });
 });
 
+async function initDatabase() {
+  try {
+    await pool.query(`ALTER TABLE books ADD COLUMN IF NOT EXISTS category VARCHAR(80)`);
+  } catch (err) {
+    console.error("Database init error:", err.message);
+    throw err;
+  }
+}
+
 // ─── Start server ─────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch(() => {
+    console.error("Failed to initialize the database schema. Server not started.");
+  });
