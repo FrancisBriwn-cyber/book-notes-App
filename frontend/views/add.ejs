@@ -1,202 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Add a Book — My Book Notes</title>
-    <meta name="description" content="Add a book you have read to your personal reading journal." />
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <div class="page-wrapper">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Book</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <header class="site-header">
+      <h1>📚 Book Notes</h1>
+      <a href="/" class="btn btn-secondary">← Back</a>
+    </header>
 
-      <!-- ── Header ── -->
-      <header class="site-header">
-        <div class="header-brand">
-          <h1>📚 My Book Notes</h1>
-          <p>Books I've read · notes I've kept</p>
+    <div class="form-container">
+      <h2>Add a Book</h2>
+
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+
+      <form action="/add" method="POST" class="form">
+        <div class="form-group">
+          <label for="title">Title *</label>
+          <input type="text" id="title" name="title" required placeholder="Book title">
         </div>
-        <a href="/" class="btn btn-secondary" id="back-home-btn">← Back</a>
-      </header>
 
-      <!-- ── Form ── -->
-      <div class="form-page">
-        <div class="form-card">
+        <div class="form-group">
+          <label for="author">Author</label>
+          <input type="text" id="author" name="author" placeholder="Author name">
+        </div>
 
-          <div class="form-page-header">
-            <div>
-              <h2>Add a Book</h2>
-              <p>Log a book you've finished reading</p>
-            </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rating">Rating (1-10)</label>
+            <input type="number" id="rating" name="rating" min="1" max="10" placeholder="Rating">
           </div>
-
-          <!-- Validation error (if any) -->
-          <% if (error) { %>
-            <div class="alert alert-error" id="form-error">
-              <span class="alert-icon">⚠️</span>
-              <%= error %>
-            </div>
-          <% } %>
-
-          <form action="/add" method="POST" id="add-book-form" novalidate>
-
-            <!-- Book title — with live search against Open Library -->
-            <div class="form-group">
-              <label for="title">Book Title <span style="color:var(--gold)">*</span></label>
-              <div class="search-wrap">
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  required
-                  placeholder="e.g. Atomic Habits"
-                  autocomplete="off"
-                />
-                <!-- Dropdown populated by JS via /api/search -->
-                <div class="search-results" id="search-results"></div>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="author">Author</label>
-              <input type="text" id="author" name="author" placeholder="e.g. James Clear" />
-            </div>
-
-            <div class="form-group">
-              <label for="category">Category</label>
-              <select id="category" name="category">
-                <option value="">Select a category</option>
-                <% categories.forEach((item) => { %>
-                  <option value="<%= item %>"><%= item %></option>
-                <% }) %>
-              </select>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="rating">Rating (1–10)</label>
-                <input type="number" id="rating" name="rating" min="1" max="10" placeholder="e.g. 8" />
-              </div>
-              <div class="form-group">
-                <label for="date_read">Date Read</label>
-                <input type="date" id="date_read" name="date_read" />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="open_library_id">Open Library Edition ID</label>
-              <input
-                type="text"
-                id="open_library_id"
-                name="open_library_id"
-                placeholder="e.g. OL7353617M"
-              />
-              <p class="form-hint">
-                Auto-filled when you pick a book above, or find it manually at
-                <a href="https://openlibrary.org" target="_blank" rel="noopener">openlibrary.org</a>
-                and copy the ID from the URL (e.g. /books/<strong>OL7353617M</strong>).
-              </p>
-            </div>
-
-            <div class="form-group">
-              <label for="notes">Your Notes</label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows="6"
-                placeholder="What did you learn? What ideas stood out? Key quotes?"
-              ></textarea>
-            </div>
-
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary" id="submit-add-btn">💾 Save Book</button>
-              <a href="/" class="btn btn-secondary" id="cancel-add-btn">Cancel</a>
-            </div>
-
-          </form>
+          <div class="form-group">
+            <label for="date_read">Date Read</label>
+            <input type="date" id="date_read" name="date_read">
+          </div>
         </div>
-      </div>
 
+        <div class="form-group">
+          <label for="open_library_id">Open Library ID or ISBN</label>
+          <input type="text" id="open_library_id" name="open_library_id" placeholder="e.g. OL7353617M or 9780310269007">
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea id="notes" name="notes" rows="5" placeholder="Your thoughts..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Book</button>
+          <a href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
     </div>
-
-    <!-- ── Live book search via /api/search ── -->
-    <script>
-      const titleInput  = document.getElementById('title');
-      const authorInput = document.getElementById('author');
-      const olidInput   = document.getElementById('open_library_id');
-      const dropdown    = document.getElementById('search-results');
-
-      let debounceTimer;
-
-      titleInput.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        const q = titleInput.value.trim();
-
-        if (q.length < 3) {
-          dropdown.innerHTML = '';
-          dropdown.classList.remove('open');
-          return;
-        }
-
-        // Debounce to avoid hammering the API on every keystroke
-        debounceTimer = setTimeout(async () => {
-          try {
-            const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-            const data = await res.json();
-
-            if (!data.results || data.results.length === 0) {
-              dropdown.innerHTML = '';
-              dropdown.classList.remove('open');
-              return;
-            }
-
-            dropdown.innerHTML = data.results.map(book => `
-              <div class="search-result-item"
-                   data-title="${escapeHtml(book.title)}"
-                   data-author="${escapeHtml(book.author)}"
-                   data-olid="${escapeHtml(book.open_library_id || '')}">
-                ${book.cover_url
-                  ? `<img src="${book.cover_url}" alt="${escapeHtml(book.title)}" loading="lazy" />`
-                  : `<div class="no-thumb">📖</div>`}
-                <div class="sri-text">
-                  <div class="sri-title">${escapeHtml(book.title)}</div>
-                  <div class="sri-author">${escapeHtml(book.author)}</div>
-                </div>
-              </div>
-            `).join('');
-
-            dropdown.classList.add('open');
-
-            // When a suggestion is clicked — fill the form fields
-            dropdown.querySelectorAll('.search-result-item').forEach(item => {
-              item.addEventListener('click', () => {
-                titleInput.value  = item.dataset.title;
-                authorInput.value = item.dataset.author;
-                olidInput.value   = item.dataset.olid;
-                dropdown.classList.remove('open');
-                dropdown.innerHTML = '';
-              });
-            });
-
-          } catch (err) {
-            console.error('Search error:', err);
-          }
-        }, 400);
-      });
-
-      // Close dropdown when clicking outside
-      document.addEventListener('click', e => {
-        if (!e.target.closest('.search-wrap')) {
-          dropdown.classList.remove('open');
-        }
-      });
-
-      // Safely escape HTML to prevent XSS in the dropdown
-      function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;')
-                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      }
-    </script>
-  </body>
+  </div>
+</body>
 </html>

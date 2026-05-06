@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Book Notes</title>
-    <meta name="description" content="A personal reading journal — books I've read, notes I've taken, and ratings." />
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <div class="page-wrapper">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Notes</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-wrapper">
 
       <!-- ── Header ── -->
       <header class="site-header">
@@ -55,77 +54,60 @@
         <div class="search-summary">Showing results for “<strong><%= currentSearch %></strong>”</div>
       <% } %>
 
-      <!-- ── Book Grid ── -->
       <div class="book-grid">
-
         <% if (books.length === 0) { %>
           <div class="empty-state">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2"
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-            <h2>Your bookshelf is empty</h2>
-            <p>Start by adding the first book you've read.</p>
-            <a href="/add" class="btn btn-primary" id="empty-add-btn">＋ Add your first book</a>
+            <h2>No books yet</h2>
+            <p><a href="/add">Add your first book</a></p>
           </div>
-
         <% } else { %>
 
-          <% books.forEach(book => { %>
-            <% const coverUrl = book.open_library_id ? `https://covers.openlibrary.org/b/olid/${book.open_library_id}-L.jpg` : null; %>
-            <div class="book-card" id="book-<%= book.id %>">
-              <div class="book-card-main">
-                <div class="book-cover-wrap">
-                  <% if (coverUrl) { %>
-                    <img
-                      src="<%= coverUrl %>"
-                      alt="<%= book.title %> cover"
-                      class="book-cover"
-                      loading="lazy"
-                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-                    />
-                  <% } %>
-
-                  <div class="no-cover" style="<%= coverUrl ? 'display:none' : 'display:flex' %>">
-                    <span>Cover unavailable</span>
-                  </div>
-                  <% if (book.rating) { %>
-                    <div class="rating-badge">⭐ <%= book.rating %></div>
-                  <% } %>
-                </div>
-
-                <div class="book-info">
-                  <div class="book-meta-row">
-                    <% if (book.date_read) { %>
-                      <span class="book-date"><%= new Date(book.date_read).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) %></span>
-                    <% } %>
-                    <% if (book.category) { %>
-                      <span class="book-category"><%= book.category %></span>
-                    <% } %>
-                    <% if (book.open_library_id) { %>
-                      <span class="book-badge">Open Library</span>
-                    <% } %>
-                  </div>
-
-                  <h2 class="book-title"><%= book.title %></h2>
-
-                  <% if (book.author) { %>
-                    <p class="book-author"><%= book.author %></p>
-                  <% } %>
-
-                  <% if (book.notes) { %>
-                    <p class="book-notes"><%= book.notes %></p>
-                  <% } else { %>
-                    <p class="book-notes book-notes--ghost">No notes yet. Add a quick summary of what stood out.</p>
-                  <% } %>
-
-                  <div class="book-actions">
-                    <a href="/edit/<%= book.id %>" class="btn btn-secondary" id="edit-<%= book.id %>">Edit</a>
-                    <form action="/delete/<%= book.id %>" method="POST" style="display:inline"
-                          onsubmit="return confirm('Delete «<%= book.title %>»? This cannot be undone.')">
-                      <button type="submit" class="btn btn-danger" id="delete-<%= book.id %>">Delete</button>
-                    </form>
-                  </div>
+          <% books.forEach(book => {
+               const rawId = book.open_library_id ? book.open_library_id.trim() : '';
+               const cleanedId = rawId
+                 .replace(/^(?:ISBN(?:-1[03])?:?\s*)/i, '')
+                 .replace(/[^0-9A-Za-z]/g, '');
+               const isOlayId = /^OL[0-9A-Z]+M$/i.test(cleanedId);
+               const isIsbn = /^(?:\d{13}|\d{9}[\dXx])$/.test(cleanedId);
+               const coverUrl = cleanedId && (isOlayId || isIsbn)
+                 ? isOlayId
+                   ? `https://covers.openlibrary.org/b/olid/${cleanedId}-M.jpg`
+                   : `https://covers.openlibrary.org/b/isbn/${cleanedId}-M.jpg`
+                 : null;
+             %>
+            <div class="book-card">
+              <div class="book-cover-wrap">
+                <% if (coverUrl) { %>
+                  <img
+                    src="<%= coverUrl %>"
+                    alt="<%= book.title %>"
+                    class="book-cover"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+                  >
+                  <div class="no-cover" style="display:none">Cover unavailable</div>
+                <% } else { %>
+                  <div class="no-cover">Cover unavailable</div>
+                <% } %>
+              </div>
+              <div class="book-info">
+                <% if (book.rating) { %>
+                  <span class="rating">⭐ <%= book.rating %>/10</span>
+                <% } %>
+                <h3><%= book.title %></h3>
+                <% if (book.author) { %>
+                  <p class="author"><%= book.author %></p>
+                <% } %>
+                <% if (book.date_read) { %>
+                  <p class="date"><%= new Date(book.date_read).toLocaleDateString() %></p>
+                <% } %>
+                <% if (book.notes) { %>
+                  <p class="notes"><%= book.notes.substring(0, 100) %>...</p>
+                <% } %>
+                <div class="book-actions">
+                  <a href="/edit/<%= book.id %>" class="btn btn-secondary">Edit</a>
+                  <form action="/delete/<%= book.id %>" method="POST" style="display:inline" onsubmit="return confirm('Delete?')">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -133,7 +115,6 @@
 
         <% } %>
       </div>
-
-    </div>
-  </body>
+  </div>
+</body>
 </html>

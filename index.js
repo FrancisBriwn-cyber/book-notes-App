@@ -1,268 +1,141 @@
 const express = require("express");
-const axios = require("axios");
 const pool = require("./db");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(express.urlencoded({ extended: true })); // Parse HTML form submissions
-app.use(express.json());                          // Parse JSON request bodies
-app.use(express.static("frontend/public"));       // Serve CSS, images, etc.
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static("frontend/public"));
 
-// Set EJS as the view/templating engine
 app.set("view engine", "ejs");
 app.set("views", "./frontend/views");
 
-// ─── Allowed sort columns (whitelist to prevent SQL injection) ────────────────
-const VALID_SORTS = ["rating", "date_read", "title"];
-const BOOK_CATEGORIES = [
-  "Finance",
-  "Business",
-  "Lifestyle",
-  "Nature",
-  "Technology",
-  "Productivity",
-  "Self-help",
-  "History"
-];
-
-async function getCoverIdForBook(book) {
-  if (book.open_library_id) return book.open_library_id;
-  const searchTerm = [book.title, book.author].filter(Boolean).join(" ");
-  if (!searchTerm) return null;
-
-  try {
-    const response = await axios.get("https://openlibrary.org/search.json", {
-      params: { q: searchTerm, limit: 1, fields: "cover_edition_key" },
-    });
-    const doc = response.data.docs?.[0];
-    return doc?.cover_edition_key || null;
-  } catch (err) {
-    console.warn("Open Library lookup failed for book:", book.title, err.message);
-    return null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  GET /  — Home page: list all books with optional sorting
-// ═══════════════════════════════════════════════════════════════════════════════
+// GET / - Display all books
 app.get("/", async (req, res) => {
-  const sortBy = req.query.sort || "date_read"; // Default: most recently read
+  const sortBy = req.query.sort || "date_read";
   const searchTerm = req.query.q ? req.query.q.trim() : "";
-  const sortColumn = VALID_SORTS.includes(sortBy) ? sortBy : "date_read";
+  const validSorts = ["rating", "date_read", "title"];
+  const sortColumn = validSorts.includes(sortBy) ? sortBy : "date_read";
 
   try {
-    let queryText = "SELECT * FROM books";
-    const queryParams = [];
+    let query = "SELECT * FROM books";
+    const params = [];
 
     if (searchTerm) {
-      queryText += " WHERE title ILIKE $1 OR author ILIKE $1";
-      queryParams.push(`%${searchTerm}%`);
+      query += " WHERE title ILIKE $1 OR author ILIKE $1";
+      params.push(`%${searchTerm}%`);
     }
 
-    queryText += ` ORDER BY ${sortColumn} DESC`;
+    query += ` ORDER BY ${sortColumn} DESC`;
+    const result = await pool.query(query, params);
 
-    const result = await pool.query(queryText, queryParams);
-
-    const books = await Promise.all(
-      result.rows.map(async (book) => {
-        book.open_library_id = book.open_library_id || await getCoverIdForBook(book);
-        return book;
-      })
-    );
-
-    res.render("index", { books, currentSort: sortBy, currentSearch: searchTerm });
+    res.render("index", {
+      books: result.rows,
+      currentSort: sortBy,
+      currentSearch: searchTerm,
+    });
   } catch (err) {
-    console.error("Error fetching books:", err.message);
-    res.status(500).render("error", { message: "Could not load books. Please try again." });
+    console.error("Error:", err.message);
+    res.status(500).render("error", { message: "Failed to load books." });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  GET /add  — Render the "Add a Book" form
-// ═══════════════════════════════════════════════════════════════════════════════
+// GET /add - Show add form
 app.get("/add", (req, res) => {
-  res.render("add", { error: null, categories: BOOK_CATEGORIES });
+  res.render("add", { error: null });
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  POST /add  — Save a new book to the database
-// ═══════════════════════════════════════════════════════════════════════════════
+// POST /add - Create book
 app.post("/add", async (req, res) => {
-  const { title, author, rating, notes, date_read, open_library_id, category } = req.body;
+  const { title, author, rating, notes, date_read, open_library_id } = req.body;
 
-  // Validate required fields
-  if (!title || title.trim() === "") {
-    return res.status(400).render("add", { error: "Book title is required.", categories: BOOK_CATEGORIES });
+  if (!title || !title.trim()) {
+    return res.status(400).render("add", { error: "Title is required." });
   }
 
   try {
     await pool.query(
-      `INSERT INTO books (title, author, rating, notes, date_read, open_library_id, category)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      "INSERT INTO books (title, author, rating, notes, date_read, open_library_id) VALUES ($1, $2, $3, $4, $5, $6)",
       [
         title.trim(),
-        author ? author.trim() : null,
+        author?.trim() || null,
         rating || null,
-        notes ? notes.trim() : null,
+        notes?.trim() || null,
         date_read || null,
-        open_library_id ? open_library_id.trim() : null,
-        category ? category.trim() : null,
+        open_library_id?.trim() || null,
       ]
     );
     res.redirect("/");
   } catch (err) {
-    console.error("Error adding book:", err.message);
-    res.status(500).render("add", { error: "Could not save book. Please try again.", categories: BOOK_CATEGORIES });
+    console.error("Error:", err.message);
+    res.status(500).render("add", { error: "Could not save book." });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  GET /edit/:id  — Render the "Edit Book" form pre-filled with existing data
-// ═══════════════════════════════════════════════════════════════════════════════
+// GET /edit/:id - Show edit form
 app.get("/edit/:id", async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const result = await pool.query(`SELECT * FROM books WHERE id = $1`, [id]);
-
-    if (result.rows.length === 0) {
+    const result = await pool.query("SELECT * FROM books WHERE id = $1", [req.params.id]);
+    if (!result.rows.length) {
       return res.status(404).render("error", { message: "Book not found." });
     }
-
-    res.render("edit", {
-      book: result.rows[0],
-      error: null,
-      categories: BOOK_CATEGORIES,
-    });
+    res.render("edit", { book: result.rows[0], error: null });
   } catch (err) {
-    console.error("Error fetching book for edit:", err.message);
-    res.status(500).render("error", { message: "Could not load book." });
+    console.error("Error:", err.message);
+    res.status(500).render("error", { message: "Failed to load book." });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  POST /edit/:id  — Update an existing book in the database
-// ═══════════════════════════════════════════════════════════════════════════════
+// POST /edit/:id - Update book
 app.post("/edit/:id", async (req, res) => {
-  const { id } = req.params;
-  const { title, author, rating, notes, date_read, open_library_id, category } = req.body;
+  const { title, author, rating, notes, date_read, open_library_id } = req.body;
 
-  if (!title || title.trim() === "") {
-    // Fetch the book again so the form can re-render with existing data
-    const result = await pool.query(`SELECT * FROM books WHERE id = $1`, [id]);
+  if (!title || !title.trim()) {
+    const result = await pool.query("SELECT * FROM books WHERE id = $1", [req.params.id]);
     return res.status(400).render("edit", {
       book: result.rows[0],
-      error: "Book title is required.",
-      categories: BOOK_CATEGORIES,
+      error: "Title is required.",
     });
   }
 
   try {
     await pool.query(
-      `UPDATE books
-       SET title=$1, author=$2, rating=$3, notes=$4, date_read=$5, open_library_id=$6, category=$7
-       WHERE id=$8`,
+      "UPDATE books SET title=$1, author=$2, rating=$3, notes=$4, date_read=$5, open_library_id=$6 WHERE id=$7",
       [
         title.trim(),
-        author ? author.trim() : null,
+        author?.trim() || null,
         rating || null,
-        notes ? notes.trim() : null,
+        notes?.trim() || null,
         date_read || null,
-        open_library_id ? open_library_id.trim() : null,
-        category ? category.trim() : null,
-        id,
+        open_library_id?.trim() || null,
+        req.params.id,
       ]
     );
     res.redirect("/");
   } catch (err) {
-    console.error("Error updating book:", err.message);
+    console.error("Error:", err.message);
     res.status(500).render("error", { message: "Could not update book." });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  POST /delete/:id  — Delete a book from the database
-// ═══════════════════════════════════════════════════════════════════════════════
+// POST /delete/:id - Delete book
 app.post("/delete/:id", async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const result = await pool.query(
-      `DELETE FROM books WHERE id = $1 RETURNING id`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).render("error", { message: "Book not found." });
-    }
-
+    await pool.query("DELETE FROM books WHERE id = $1", [req.params.id]);
     res.redirect("/");
   } catch (err) {
-    console.error("Error deleting book:", err.message);
+    console.error("Error:", err.message);
     res.status(500).render("error", { message: "Could not delete book." });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  GET /api/search?q=  — Proxy to Open Library Search API
-//  Used by the add-form to look up books and auto-fill the Open Library ID.
-// ═══════════════════════════════════════════════════════════════════════════════
-app.get("/api/search", async (req, res) => {
-  const { q } = req.query;
-
-  if (!q || q.trim() === "") {
-    return res.status(400).json({ error: "Query parameter `q` is required." });
-  }
-
-  try {
-    // Open Library search API — returns title, author, and edition keys
-    const response = await axios.get("https://openlibrary.org/search.json", {
-      params: { q: q.trim(), limit: 8, fields: "title,author_name,cover_edition_key,key" },
-    });
-
-    // Shape the response to only expose what the frontend needs
-    const books = response.data.docs.map((doc) => ({
-      title: doc.title,
-      author: doc.author_name ? doc.author_name[0] : "Unknown",
-      open_library_id: doc.cover_edition_key || null,
-      cover_url: doc.cover_edition_key
-        ? `https://covers.openlibrary.org/b/olid/${doc.cover_edition_key}-S.jpg`
-        : null,
-    }));
-
-    res.json({ results: books });
-  } catch (err) {
-    console.error("Open Library API error:", err.message);
-    res.status(502).json({ error: "Could not reach Open Library. Try again later." });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  404 catch-all — Any unmatched route
-// ═══════════════════════════════════════════════════════════════════════════════
+// 404
 app.use((req, res) => {
   res.status(404).render("error", { message: "Page not found." });
 });
 
-async function initDatabase() {
-  try {
-    await pool.query(`ALTER TABLE books ADD COLUMN IF NOT EXISTS category VARCHAR(80)`);
-  } catch (err) {
-    console.error("Database init error:", err.message);
-    throw err;
-  }
-}
-
-// ─── Start server ─────────────────────────────────────────────────────────────
-initDatabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch(() => {
-    console.error("Failed to initialize the database schema. Server not started.");
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
