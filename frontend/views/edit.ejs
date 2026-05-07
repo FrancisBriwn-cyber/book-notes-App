@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Edit Book</title>
+  <title>Edit Book — Book Notes</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -13,14 +13,16 @@
       <a href="/" class="btn btn-secondary">← Back</a>
     </header>
 
-    <div class="form-container">
-      <h2>Edit Book</h2>
+    <div class="form-page">
+      <div class="form-page-header">
+        <h2>Edit Book</h2>
+      </div>
 
       <% if (error) { %>
         <div class="alert alert-error"><%= error %></div>
       <% } %>
 
-      <form action="/edit/<%= book.id %>" method="POST" class="form">
+      <form action="/edit/<%= book.id %>" method="POST" class="form-card">
         <div class="form-group">
           <label for="title">Title *</label>
           <input type="text" id="title" name="title" required value="<%= book.title %>">
@@ -33,18 +35,21 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="rating">Rating (1-10)</label>
-            <input type="number" id="rating" name="rating" min="1" max="10" value="<%= book.rating || '' %>">
+            <label for="rating">Rating (1–10)</label>
+            <input type="number" id="rating" name="rating" min="1" max="10"
+                   value="<%= book.rating || '' %>">
           </div>
           <div class="form-group">
             <label for="date_read">Date Read</label>
-            <input type="date" id="date_read" name="date_read" value="<%= book.date_read ? new Date(book.date_read).toISOString().split('T')[0] : '' %>">
+            <input type="date" id="date_read" name="date_read"
+                   value="<%= book.date_read ? new Date(book.date_read).toISOString().split('T')[0] : '' %>">
           </div>
         </div>
 
         <div class="form-group">
           <label for="open_library_id">Open Library ID or ISBN</label>
-          <input type="text" id="open_library_id" name="open_library_id" value="<%= book.open_library_id || '' %>">
+          <input type="text" id="open_library_id" name="open_library_id"
+                 value="<%= book.open_library_id || '' %>">
         </div>
 
         <div class="form-group">

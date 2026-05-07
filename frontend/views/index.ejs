@@ -9,112 +9,115 @@
 <body>
   <div class="page-wrapper">
 
-      <!-- ── Header ── -->
-      <header class="site-header">
-        <div class="header-brand">
-          <p class="eyebrow">Reading Journal</p>
-          <h1>📚 My Book Notes</h1>
-          <p>Books I've read · notes I've kept</p>
-        </div>
-
-        <div class="header-actions">
-          <form action="/" method="GET" class="search-form">
-            <label for="search-q" class="sr-only">Search books</label>
-            <input
-              id="search-q"
-              name="q"
-              type="search"
-              value="<%= currentSearch ? currentSearch : '' %>"
-              placeholder="Search by title or author"
-              class="search-input"
-            />
-            <button type="submit" class="btn btn-secondary">Search</button>
-          </form>
-
-          <a href="/add" class="btn btn-primary" id="add-book-btn">＋ Add Book</a>
-        </div>
-      </header>
-
-      <!-- ── Toolbar: stats + sort ── -->
-      <div class="stats-row">
-        <span class="stats-badge"><%= books.length %> book<%= books.length !== 1 ? 's' : '' %></span>
+    <header class="site-header">
+      <div class="header-brand">
+        <p class="eyebrow">Reading Journal</p>
+        <h1>📚 My Book Notes</h1>
+        <p>Books I've read · notes I've kept</p>
       </div>
 
-      <div class="sort-bar">
-        <span>Sort by</span>
-        <a href="/?sort=date_read<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>" id="sort-recency"
-           class="sort-btn <%= currentSort === 'date_read' ? 'active' : '' %>">🕐 Recency</a>
-        <a href="/?sort=rating<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"   id="sort-rating"
-           class="sort-btn <%= currentSort === 'rating'    ? 'active' : '' %>">⭐ Rating</a>
-        <a href="/?sort=title<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"    id="sort-title"
-           class="sort-btn <%= currentSort === 'title'     ? 'active' : '' %>">🔤 Title</a>
+      <div class="header-actions">
+        <form action="/" method="GET" class="search-form">
+          <label for="search-q" class="sr-only">Search books</label>
+          <input
+            id="search-q"
+            name="q"
+            type="search"
+            value="<%= currentSearch %>"
+            placeholder="Search by title or author"
+            class="search-input"
+          />
+          <button type="submit" class="btn btn-secondary">Search</button>
+        </form>
+
+        <a href="/add" class="btn btn-primary">＋ Add Book</a>
       </div>
+    </header>
 
-      <% if (currentSearch) { %>
-        <div class="search-summary">Showing results for “<strong><%= currentSearch %></strong>”</div>
-      <% } %>
+    <div class="stats-row">
+      <span class="stats-badge"><%= books.length %> book<%= books.length !== 1 ? 's' : '' %></span>
+    </div>
 
-      <div class="book-grid">
-        <% if (books.length === 0) { %>
-          <div class="empty-state">
-            <h2>No books yet</h2>
-            <p><a href="/add">Add your first book</a></p>
-          </div>
-        <% } else { %>
+    <div class="sort-bar">
+      <span>Sort by</span>
+      <a href="/?sort=date_read<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"
+         class="sort-btn <%= currentSort === 'date_read' ? 'active' : '' %>">🕐 Recency</a>
+      <a href="/?sort=rating<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"
+         class="sort-btn <%= currentSort === 'rating' ? 'active' : '' %>">⭐ Rating</a>
+      <a href="/?sort=title<%= currentSearch ? '&q=' + encodeURIComponent(currentSearch) : '' %>"
+         class="sort-btn <%= currentSort === 'title' ? 'active' : '' %>">🔤 Title</a>
+    </div>
 
-          <% books.forEach(book => {
-               const rawId = book.open_library_id ? book.open_library_id.trim() : '';
-               const cleanedId = rawId
-                 .replace(/^(?:ISBN(?:-1[03])?:?\s*)/i, '')
-                 .replace(/[^0-9A-Za-z]/g, '');
-               const isOlayId = /^OL[0-9A-Z]+M$/i.test(cleanedId);
-               const isIsbn = /^(?:\d{13}|\d{9}[\dXx])$/.test(cleanedId);
-               const coverUrl = cleanedId && (isOlayId || isIsbn)
-                 ? isOlayId
-                   ? `https://covers.openlibrary.org/b/olid/${cleanedId}-M.jpg`
-                   : `https://covers.openlibrary.org/b/isbn/${cleanedId}-M.jpg`
-                 : null;
-             %>
-            <div class="book-card">
-              <div class="book-cover-wrap">
-                <% if (coverUrl) { %>
-                  <img
-                    src="<%= coverUrl %>"
-                    alt="<%= book.title %>"
-                    class="book-cover"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-                  >
-                  <div class="no-cover" style="display:none">Cover unavailable</div>
-                <% } else { %>
-                  <div class="no-cover">Cover unavailable</div>
-                <% } %>
-              </div>
-              <div class="book-info">
-                <% if (book.rating) { %>
-                  <span class="rating">⭐ <%= book.rating %>/10</span>
-                <% } %>
-                <h3><%= book.title %></h3>
-                <% if (book.author) { %>
-                  <p class="author"><%= book.author %></p>
-                <% } %>
-                <% if (book.date_read) { %>
-                  <p class="date"><%= new Date(book.date_read).toLocaleDateString() %></p>
-                <% } %>
-                <% if (book.notes) { %>
-                  <p class="notes"><%= book.notes.substring(0, 100) %>...</p>
-                <% } %>
-                <div class="book-actions">
-                  <a href="/edit/<%= book.id %>" class="btn btn-secondary">Edit</a>
-                  <form action="/delete/<%= book.id %>" method="POST" style="display:inline" onsubmit="return confirm('Delete?')">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                  </form>
-                </div>
+    <% if (currentSearch) { %>
+      <div class="search-summary">
+        Showing results for "<strong><%= currentSearch %></strong>"
+      </div>
+    <% } %>
+
+    <div class="book-grid">
+      <% if (books.length === 0) { %>
+        <div class="empty-state">
+          <h2>No books yet</h2>
+          <p><a href="/add">Add your first book</a></p>
+        </div>
+      <% } else { %>
+
+        <% books.forEach(book => {
+             const rawId    = book.open_library_id ? book.open_library_id.trim() : '';
+             const cleanId  = rawId
+               .replace(/^(?:ISBN(?:-1[03])?:?\s*)/i, '')
+               .replace(/[^0-9A-Za-z]/g, '');
+             const isOlid   = /^OL\d+M$/i.test(cleanId);
+             const isIsbn   = /^(\d{13}|\d{9}[\dXx])$/.test(cleanId);
+             const coverUrl = cleanId && (isOlid || isIsbn)
+               ? isOlid
+                 ? `https://covers.openlibrary.org/b/olid/${cleanId}-M.jpg`
+                 : `https://covers.openlibrary.org/b/isbn/${cleanId}-M.jpg`
+               : null;
+           %>
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <% if (coverUrl) { %>
+                <img
+                  src="<%= coverUrl %>"
+                  alt="<%= book.title %>"
+                  class="book-cover"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+                >
+                <div class="no-cover" style="display:none">No cover</div>
+              <% } else { %>
+                <div class="no-cover">No cover</div>
+              <% } %>
+              <% if (book.rating) { %>
+                <span class="rating-badge">⭐ <%= book.rating %>/10</span>
+              <% } %>
+            </div>
+
+            <div class="book-info">
+              <h3 class="book-title"><%= book.title %></h3>
+              <% if (book.author) { %>
+                <p class="book-author"><%= book.author %></p>
+              <% } %>
+              <% if (book.date_read) { %>
+                <span class="book-date"><%= new Date(book.date_read).toLocaleDateString() %></span>
+              <% } %>
+              <% if (book.notes) { %>
+                <p class="book-notes"><%= book.notes %></p>
+              <% } %>
+              <div class="book-actions">
+                <a href="/edit/<%= book.id %>" class="btn btn-secondary">Edit</a>
+                <form action="/delete/<%= book.id %>" method="POST" style="display:inline"
+                      onsubmit="return confirm('Delete this book?')">
+                  <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
               </div>
             </div>
-          <% }) %>
+          </div>
+        <% }) %>
 
-        <% } %>
-      </div>
+      <% } %>
+    </div>
+
   </div>
 </body>
 </html>

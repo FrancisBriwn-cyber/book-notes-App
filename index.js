@@ -1,6 +1,6 @@
+require("dotenv").config();
 const express = require("express");
 const pool = require("./db");
-require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,10 +14,10 @@ app.set("views", "./frontend/views");
 
 // GET / - Display all books
 app.get("/", async (req, res) => {
-  const sortBy = req.query.sort || "date_read";
-  const searchTerm = req.query.q ? req.query.q.trim() : "";
   const validSorts = ["rating", "date_read", "title"];
+  const sortBy = req.query.sort || "date_read";
   const sortColumn = validSorts.includes(sortBy) ? sortBy : "date_read";
+  const searchTerm = req.query.q ? req.query.q.trim() : "";
 
   try {
     let query = "SELECT * FROM books";
@@ -33,17 +33,17 @@ app.get("/", async (req, res) => {
 
     res.render("index", {
       books: result.rows,
-      currentSort: sortBy,
+      currentSort: sortColumn,
       currentSearch: searchTerm,
     });
   } catch (err) {
-    console.error("Error:", err.message);
+    console.error("GET / error:", err.message);
     res.status(500).render("error", { message: "Failed to load books." });
   }
 });
 
 // GET /add - Show add form
-app.get("/add", (req, res) => {
+app.get("/add", (_req, res) => {
   res.render("add", { error: null });
 });
 
@@ -69,7 +69,7 @@ app.post("/add", async (req, res) => {
     );
     res.redirect("/");
   } catch (err) {
-    console.error("Error:", err.message);
+    console.error("POST /add error:", err.message);
     res.status(500).render("add", { error: "Could not save book." });
   }
 });
@@ -83,7 +83,7 @@ app.get("/edit/:id", async (req, res) => {
     }
     res.render("edit", { book: result.rows[0], error: null });
   } catch (err) {
-    console.error("Error:", err.message);
+    console.error("GET /edit error:", err.message);
     res.status(500).render("error", { message: "Failed to load book." });
   }
 });
@@ -93,11 +93,12 @@ app.post("/edit/:id", async (req, res) => {
   const { title, author, rating, notes, date_read, open_library_id } = req.body;
 
   if (!title || !title.trim()) {
-    const result = await pool.query("SELECT * FROM books WHERE id = $1", [req.params.id]);
-    return res.status(400).render("edit", {
-      book: result.rows[0],
-      error: "Title is required.",
-    });
+    try {
+      const result = await pool.query("SELECT * FROM books WHERE id = $1", [req.params.id]);
+      return res.status(400).render("edit", { book: result.rows[0], error: "Title is required." });
+    } catch (err) {
+      return res.status(500).render("error", { message: "Failed to load book." });
+    }
   }
 
   try {
@@ -115,7 +116,7 @@ app.post("/edit/:id", async (req, res) => {
     );
     res.redirect("/");
   } catch (err) {
-    console.error("Error:", err.message);
+    console.error("POST /edit error:", err.message);
     res.status(500).render("error", { message: "Could not update book." });
   }
 });
@@ -126,13 +127,13 @@ app.post("/delete/:id", async (req, res) => {
     await pool.query("DELETE FROM books WHERE id = $1", [req.params.id]);
     res.redirect("/");
   } catch (err) {
-    console.error("Error:", err.message);
+    console.error("POST /delete error:", err.message);
     res.status(500).render("error", { message: "Could not delete book." });
   }
 });
 
 // 404
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).render("error", { message: "Page not found." });
 });
 

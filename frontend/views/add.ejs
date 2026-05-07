@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add Book</title>
+  <title>Add Book — Book Notes</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -13,14 +13,16 @@
       <a href="/" class="btn btn-secondary">← Back</a>
     </header>
 
-    <div class="form-container">
-      <h2>Add a Book</h2>
+    <div class="form-page">
+      <div class="form-page-header">
+        <h2>Add a Book</h2>
+      </div>
 
       <% if (error) { %>
         <div class="alert alert-error"><%= error %></div>
       <% } %>
 
-      <form action="/add" method="POST" class="form">
+      <form action="/add" method="POST" class="form-card">
         <div class="form-group">
           <label for="title">Title *</label>
           <input type="text" id="title" name="title" required placeholder="Book title">
@@ -33,8 +35,8 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="rating">Rating (1-10)</label>
-            <input type="number" id="rating" name="rating" min="1" max="10" placeholder="Rating">
+            <label for="rating">Rating (1–10)</label>
+            <input type="number" id="rating" name="rating" min="1" max="10" placeholder="–">
           </div>
           <div class="form-group">
             <label for="date_read">Date Read</label>
@@ -44,12 +46,13 @@
 
         <div class="form-group">
           <label for="open_library_id">Open Library ID or ISBN</label>
-          <input type="text" id="open_library_id" name="open_library_id" placeholder="e.g. OL7353617M or 9780310269007">
+          <input type="text" id="open_library_id" name="open_library_id"
+                 placeholder="e.g. OL7353617M or 9780310269007">
         </div>
 
         <div class="form-group">
           <label for="notes">Notes</label>
-          <textarea id="notes" name="notes" rows="5" placeholder="Your thoughts..."></textarea>
+          <textarea id="notes" name="notes" rows="5" placeholder="Your thoughts…"></textarea>
         </div>
 
         <div class="form-actions">
